@@ -14,6 +14,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private TextView salida;
 
+    private float[] mGravedad;
+    private float[] mGeomagnetismo;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,12 +29,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         for(Sensor sensor: listaSensores) {
             log(sensor.getName());
         }
-        listaSensores = sensorManager.getSensorList(Sensor.TYPE_ORIENTATION);
+        /*listaSensores = sensorManager.getSensorList(Sensor.TYPE_ORIENTATION);
         if (!listaSensores.isEmpty()) {
             Sensor orientationSensor = listaSensores.get(0);
             sensorManager.registerListener(this, orientationSensor,
                     SensorManager.SENSOR_DELAY_UI);
-        }
+        }*/
         listaSensores = sensorManager.getSensorList(Sensor.TYPE_ACCELEROMETER);
         if (!listaSensores.isEmpty()) {
             Sensor acelerometerSensor = listaSensores.get(0);
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         salida.append(string + "\n");
     }
 
-    @Override
+    /*@Override
     public void onSensorChanged(SensorEvent event) {
         //Cada sensor puede provocar que un thread principal
         //pase por aquí así que sincronizamos el acceso
@@ -82,6 +85,50 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     for (int i=0 ; i<event.values.length ; i++) {
                         log("Temperatura "+i+": "+event.values[i]);
                     }
+            }
+        }
+    }*/
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        //Cada sensor puede provocar que un thread principal
+        //pase por aquí así que sincronizamos el acceso
+        //(se verá más adelante)
+        synchronized (this) {
+            switch(event.sensor.getType()) {
+                case Sensor.TYPE_ACCELEROMETER:
+                    mGravedad = event.values;
+                    for (int i=0 ; i < mGravedad.length ; i++) {
+                        log("Acelerómetro "+i+": "+event.values[i]);
+                    }
+                    break;
+
+                case Sensor.TYPE_MAGNETIC_FIELD:
+                    mGeomagnetismo = event.values;
+                    for (int i=0 ; i < mGeomagnetismo.length ; i++) {
+                        log("Magnetismo "+i+": "+event.values[i]);
+                    }
+                    break;
+                default:
+                    for (int i=0 ; i<event.values.length ; i++) {
+                        log("Temperatura "+i+": "+event.values[i]);
+                    }
+            }
+            if (mGravedad != null && mGeomagnetismo != null) {
+                float R[] = new float[9];
+                float I[] = new float[9];
+                boolean exito =
+                        SensorManager
+                                .getRotationMatrix(R, I,
+                                        mGravedad, mGeomagnetismo);
+                if (exito) {
+                    float orientacion[] = new float[3];
+                    SensorManager.getOrientation(R, orientacion);
+                    // ángulos en radianes
+                    log("ORIENTACION Acimut " + orientacion[0]);
+                    log("ORIENTACION Pitch " + orientacion[1]);
+                    log("ORIENTACION Roll " + orientacion[2]);
+                }
             }
         }
     }
